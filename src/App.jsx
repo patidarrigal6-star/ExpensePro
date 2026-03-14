@@ -882,6 +882,3 @@ function App() {
 }
 
 export default App;
-Clicking...Pressing key...Stopping...
-
-Stop Agent
