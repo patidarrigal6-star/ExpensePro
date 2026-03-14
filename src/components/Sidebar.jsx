@@ -2,7 +2,7 @@ import React from 'react';
 import { LayoutDashboard, Wallet, Settings, PieChart, History, TrendingUp, PlusCircle, Menu, X } from 'lucide-react';
 
 export function Sidebar({ activeTab, setActiveTab }) {
-    const [isOpen, setIsOpen] = React.useState(false);
+    const [isOpen, setIsOpen] = React.useState(
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -15,7 +15,7 @@ export function Sidebar({ activeTab, setActiveTab }) {
         <>
               <button className="mobile-toggle btn" onClick={() => setIsOpen(!isOpen)}>
                 {isOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>button>
+              </button>
               <div className={`sidebar ${isOpen ? 'open' : ''}`}>
                       <div className="sidebar-header">
                                 <div className="logo-container">
