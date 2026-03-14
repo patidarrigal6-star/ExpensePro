@@ -454,7 +454,7 @@ function App() {
             <div className="summary-section">
               <SummaryCard title="Today's Total" amount={stats.todayTotal} icon={CreditCard} color="#10b981" />
               <SummaryCard title={viewMode === 'monthly' ? `${format(selectedDate, 'MMMM')} Expense` : "Yearly Expense"} amount={stats.totalPeriodic} icon={PieIcon} color="#0ea5e9" />
-              <SummaryCard title="Remaining Budget" amount={stats.remaining} icon={Home} color="#ef4444" subtitle={`Budget: â‚¹${stats.budget.toLocaleString('en-IN')}`} />
+              <SummaryCard title="Remaining Budget" amount={stats.remaining} icon={Home} color="#ef4444" subtitle={`Budget: ₹${stats.budget.toLocaleString('en-IN')}`} />
               <SummaryCard title="Daily Average" amount={stats.dailyAverage} icon={DollarSign} color="#8b5cf6" subtitle="Spending Speed" />
               <SummaryCard title="Highest Category" amount={stats.highestAmount} icon={AlertCircle} color="#f59e0b" subtitle={stats.highestCategory} />
               <SummaryCard title="SIP Investment" amount={stats.sipTotal} icon={PieIcon} color="#ec4899" subtitle={viewMode === 'monthly' ? format(selectedDate, 'MMMM') : format(selectedDate, 'yyyy')} />
@@ -467,7 +467,7 @@ function App() {
                 <div className="chart-layout">
                   <div className="chart-main">
                     <div className="donut-center">
-                      <div className="donut-total">â‚¹{stats.totalPeriodic.toLocaleString('en-IN')}</div>
+                      <div className="donut-total">₹{stats.totalPeriodic.toLocaleString('en-IN')}</div>
                       <div className="donut-label">{viewMode === 'monthly' ? format(selectedDate, 'MMM') : format(selectedDate, 'yyyy')}</div>
                     </div>
                     <div className="chart-container">
@@ -545,7 +545,7 @@ function App() {
                         <tr key={exp.id}>
                           <td>{format(parseISO(exp.date), 'dd MMM')}</td>
                           <td><span className="badge">{exp.category}</span></td>
-                          <td className="amount-cell">â‚¹{exp.amount}</td>
+                          <td className="amount-cell">₹{exp.amount}</td>
                           <td className="note-cell">{exp.note}</td>
                         </tr>
                       ))}
@@ -567,23 +567,23 @@ function App() {
                     <div className="progress-fill" style={{ width: `${Math.min((stats.totalPeriodic / stats.budget) * 100, 100)}%` }}></div>
                   </div>
                   <div className="budget-info">
-                    <span>Spent: â‚¹{stats.totalPeriodic.toLocaleString('en-IN')}</span>
-                    <span>Remaining: â‚¹{stats.remaining.toLocaleString('en-IN')}</span>
+                    <span>Spent: ₹{stats.totalPeriodic.toLocaleString('en-IN')}</span>
+                    <span>Remaining: ₹{stats.remaining.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
                 <div className="insights-footer">
                   <div className="insight-item">
                     <p className="text-muted">Avg. {viewMode === 'monthly' ? "Daily" : "Monthly"}</p>
-                    <strong>â‚¹{(stats.totalPeriodic / (viewMode === 'monthly' ? new Date().getDate() : new Date().getMonth() + 1)).toFixed(0)}</strong>
+                    <strong>₹{(stats.totalPeriodic / (viewMode === 'monthly' ? new Date().getDate() : new Date().getMonth() + 1)).toFixed(0)}</strong>
                   </div>
                   <div className="insight-item">
                     <p className="text-muted">Estimated {viewMode === 'monthly' ? "Monthly" : "Yearly"}</p>
-                    <strong>â‚¹{((stats.totalPeriodic / (viewMode === 'monthly' ? new Date().getDate() : new Date().getMonth() + 1)) * (viewMode === 'monthly' ? 30 : 12)).toFixed(0)}</strong>
+                    <strong>₹{((stats.totalPeriodic / (viewMode === 'monthly' ? new Date().getDate() : new Date().getMonth() + 1)) * (viewMode === 'monthly' ? 30 : 12)).toFixed(0)}</strong>
                   </div>
                   <div className="insight-item" style={{ borderLeft: '4px solid var(--danger)' }}>
                     <p className="text-muted">Highest Spending</p>
                     <strong>{stats.highestCategory}</strong>
-                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>â‚¹{stats.highestAmount.toLocaleString('en-IN')}</div>
+                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>₹{stats.highestAmount.toLocaleString('en-IN')}</div>
                   </div>
                 </div>
               </div>
@@ -640,7 +640,7 @@ function App() {
                       <tr key={exp.id}>
                         <td>{format(parseISO(exp.date), 'dd MMM yyyy')}</td>
                         <td><span className="badge">{exp.category}</span></td>
-                        <td className="amount-cell">â‚¹{exp.amount.toLocaleString('en-IN')}</td>
+                        <td className="amount-cell">₹{exp.amount.toLocaleString('en-IN')}</td>
                         <td className="note-cell">{exp.note}</td>
                         <td>
                           <button 
@@ -750,7 +750,7 @@ function App() {
                     {expenses.filter(e => e.category === 'SIP Investment').map(exp => (
                       <tr key={exp.id}>
                         <td>{format(parseISO(exp.date), 'dd MMM yyyy')}</td>
-                        <td className="amount-cell text-success">â‚¹{exp.amount.toLocaleString('en-IN')}</td>
+                        <td className="amount-cell text-success">₹{exp.amount.toLocaleString('en-IN')}</td>
                         <td>{exp.note}</td>
                       </tr>
                     ))}
@@ -787,7 +787,7 @@ function App() {
                     placeholder={monthlyBudgets.default || 50000}
                     onChange={(e) => updateBudget(currentMonthKey, e.target.value)}
                   />
-                  <div className="card px-4 flex-center">â‚¹</div>
+                  <div className="card px-4 flex-center">₹</div>
                 </div>
               </div>
 
@@ -802,7 +802,7 @@ function App() {
                     value={monthlyBudgets.default || 50000} 
                     onChange={(e) => updateDefaultBudget(e.target.value)}
                   />
-                  <div className="card px-4 flex-center">â‚¹</div>
+                  <div className="card px-4 flex-center">₹</div>
                 </div>
               </div>
 
@@ -822,7 +822,7 @@ function App() {
                 <div className="success-icon-wrapper mb-6">
                   <Plus size={48} className="text-success" />
                 </div>
-                <h2 className="mb-4">Expense Recorded! âœ…</h2>
+                <h2 className="mb-4">Expense Recorded! ✅</h2>
                 <p className="text-muted mb-8">Aapka kharcha safely Google Sheet mein save ho gaya hai.</p>
                 <div className="flex-center gap-4">
                   <button 
@@ -863,7 +863,7 @@ function App() {
                 </select>
               </div>
               <div className="form-group">
-                <label>Amount (â‚¹)</label>
+                <label>Amount (₹)</label>
                 <input type="number" name="amount" required className="input" placeholder="0" />
               </div>
               <div className="form-group">
