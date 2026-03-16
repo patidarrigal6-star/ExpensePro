@@ -1,745 +1,884 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { 
+  TrendingUp, TrendingDown, DollarSign, PieChart as PieIcon, 
+  Settings, Plus, LogOut, ChevronRight, Filter, Search, 
+  Calendar, CreditCard, ShoppingCart, Home, Info, AlertCircle,
+  Lightbulb, Activity
+} from 'lucide-react';
+import { 
+  format, 
+  isToday, 
+  startOfMonth, 
+  startOfYear, 
+  subMonths, 
+  startOfDay, 
+  parseISO, 
+  getDaysInMonth, 
+  isSameMonth, 
+  isSameYear,
+  differenceInDays,
+  endOfMonth,
+  subDays,
+  isSameDay,
+  eachDayOfInterval,
+  endOfYear,
+  eachMonthOfInterval
+} from 'date-fns';
+import Sidebar from './components/Sidebar';
+import { SummaryCard } from './components/SummaryCard';
+import { useLocalStorage } from './hooks/useLocalStorage';
+import Login from './components/Login';
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip, 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, 
+  LineChart, Line, AreaChart, Area
+} from 'recharts';
 
-:root {
-  --primary: #0f172a;
-  --primary-light: #1e293b;
-  --accent: #0ea5e9;
-  --accent-soft: rgba(14, 165, 233, 0.1);
-  --success: #10b981;
-  --danger: #ef4444;
-  --warning: #f59e0b;
-  --background: #f8fafc;
-  --surface: rgba(255, 255, 255, 0.85);
-  --text: #0f172a;
-  --text-muted: #64748b;
-  --border: rgba(226, 232, 240, 0.5);
-  --radius: 16px;
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
-  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
-  --sidebar-width: 260px;
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --glass-bg: rgba(255, 255, 255, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.5);
-}
+const CATEGORIES = [
+  'Daily Expenses',
+  'Extra Expenses',
+  'Petrol',
+  'Fixed Expenses',
+  'Viha Expenses',
+  'SIP Investment'
+];
 
-.mesh-gradient {
-  background-color: var(--background);
-  background-image: 
-    radial-gradient(at 0% 0%, hsla(201,100%,94%,1) 0, transparent 50%), 
-    radial-gradient(at 50% 0%, hsla(225,100%,98%,1) 0, transparent 50%), 
-    radial-gradient(at 100% 0%, hsla(190,100%,96%,1) 0, transparent 50%);
-  min-height: 100vh;
-}
+const COLORS = ['#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
-.glass {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-}
+const API_URL = 'https://script.google.com/macros/s/AKfycbz-q1728GPVjcLQxejyXib1TGDhpqz-PBJubpTkCzbUtaTwsMTUL7XVBN6GEtkz0aUy/exec';
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+function App() {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [expenses, setExpenses] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [monthlyBudgets, setMonthlyBudgets] = useLocalStorage('expensePro_monthlyBudgets', { default: 50000 });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('All');
+  const [viewMode, setViewMode] = useState('monthly');
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [filterDate, setFilterDate] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useLocalStorage('expensePro_isLoggedIn', false);
+  const [showAddModal, setShowAddModal] = useState(false); // Assuming this state is needed for the Sidebar prop
+  const [isQuickMode, setIsQuickMode] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
-body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: var(--background);
-  color: var(--text);
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-}
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+  };
 
-#root {
-  min-height: 100vh;
-  display: flex;
-}
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+  };
 
-/* Layout Utilities */
-.app-container {
-  display: flex;
-  width: 100%;
-  min-height: 100vh;
-}
+  const fetchExpenses = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      
+      // Map Google Sheet columns to internal format
+      // Headers: Timestamp, Month, Category, Amount, Discerption
+      const mappedData = data
+        .filter(item => item.Category && item.Amount) // Skip empty rows
+        .map((item, index) => ({
+          id: index,
+          date: item.Timestamp ? format(new Date(item.Timestamp), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+          category: item.Category,
+          amount: Number(item.Amount),
+          note: item.Discerption || ''
+        })).reverse(); // Newest first
 
-.main-content {
-  flex: 1;
-  padding: 2rem;
-  max-width: 1600px;
-  margin: 0 auto;
-  width: 100%;
-}
+      setExpenses(mappedData);
+    } catch (error) {
+      console.error('Error fetching expenses:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-@media (max-width: 768px) {
-  .main-content {
-    padding: 1rem;
-  }
-}
+  useEffect(() => {
+    fetchExpenses();
+  }, []);
 
-/* Typography */
-h1, h2, h3, h4 {
-  font-weight: 700;
-  color: var(--primary);
-  letter-spacing: -0.025em;
-}
+  // Handle Quick Entry via URL parameter (?add=true or ?mode=quick)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    
+    if (params.get('mode') === 'quick') {
+      setIsQuickMode(true);
+      setActiveTab('add');
+      return;
+    }
 
-/* Card Style */
-.card {
-  background: var(--surface);
-  border-radius: var(--radius);
-  padding: 1.5rem;
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border);
-  transition: var(--transition);
-}
+    if (params.get('add') === 'true' && isLoggedIn) {
+      setActiveTab('add');
+      // Clear the param to avoid redirecting again on refresh
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [isLoggedIn]);
 
-.card:hover {
-  box-shadow: var(--shadow);
-}
+  const updateBudget = (monthKey, value) => {
+    setMonthlyBudgets(prev => ({
+      ...prev,
+      [monthKey]: Number(value)
+    }));
+  };
 
-/* Summary Card specific styles */
-.summary-card {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-  position: relative;
-  overflow: hidden;
-  padding: 1.75rem;
-}
-.watermark {
-  position: absolute;
-  right: -10px;
-  bottom: -10px;
-  opacity: 0.03;
-  transform: rotate(-15deg);
-  pointer-events: none;
-}
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  position: relative;
-  z-index: 1;
-}
-.icon-wrapper {
-  padding: 0.875rem;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-}
-.card-subtitle {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-.card-title {
-  font-size: 1.75rem;
-  margin-top: 0.25rem;
-  font-weight: 700;
-  color: var(--primary);
-}
-.card-footer-text {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  font-weight: 500;
-  position: relative;
-  z-index: 1;
-}
+  const updateDefaultBudget = (value) => {
+    setMonthlyBudgets(prev => ({
+      ...prev,
+      default: Number(value)
+    }));
+  };
 
-/* Button UI */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--transition);
-  border: none;
-  gap: 0.5rem;
-}
+  const currentMonthKey = format(selectedDate || new Date(), 'yyyy-MM');
+  const budgetObj = monthlyBudgets || { default: 50000 };
+  const currentBudget = budgetObj[currentMonthKey] || budgetObj.default || 50000;
 
-.btn-primary {
-  background: var(--primary);
-  color: white;
-}
+  const monthOptions = useMemo(() => {
+    const options = [];
+    for (let i = 0; i < 24; i++) {
+      options.push(subMonths(new Date(), i));
+    }
+    return options;
+  }, []);
 
-.btn-primary:hover {
-  background: var(--primary-light);
-}
+  const stats = useMemo(() => {
+    const now = new Date();
+    const periodStart = startOfMonth(selectedDate);
+    const yearStart = startOfYear(selectedDate);
+    const lastMonthStart = startOfMonth(subMonths(selectedDate, 1));
+    const lastYearStart = startOfYear(subMonths(selectedDate, 12));
 
-.btn-accent {
-  background: var(--accent);
-  color: white;
-}
+    let totalPeriodic = 0;
+    let todayTotal = 0;
+    let sipTotal = 0;
+    let lastPeriodTotal = 0;
 
-/* Input Styles */
-.input {
-  width: 100%;
-  padding: 0.75rem;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  font-size: 0.875rem;
-  transition: var(--transition);
-}
+    expenses.forEach(exp => {
+      const expDate = parseISO(exp.date);
+      const isInMonth = startOfMonth(expDate).getTime() === periodStart.getTime();
+      const isInYear = startOfYear(expDate).getTime() === yearStart.getTime();
+      const isInPeriod = viewMode === 'monthly' ? isInMonth : isInYear;
 
-.input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-soft);
-}
+      const isInLastMonth = startOfMonth(expDate).getTime() === lastMonthStart.getTime();
+      const isInLastYear = startOfYear(expDate).getTime() === lastYearStart.getTime();
+      const isInLastPeriod = viewMode === 'monthly' ? isInLastMonth : isInLastYear;
 
-.input-with-icon {
-  position: relative;
-  width: 100%;
-}
+      if (isInPeriod) {
+        if (exp.category !== 'SIP Investment') totalPeriodic += exp.amount;
+        if (exp.category === 'SIP Investment') sipTotal += exp.amount;
+      }
 
-.field-icon {
-  position: absolute;
-  left: 0.875rem;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-muted);
-}
+      if (isInLastPeriod && exp.category !== 'SIP Investment') {
+        lastPeriodTotal += exp.amount;
+      }
 
-.input-with-icon .input {
-  padding-left: 2.75rem;
-}
+      if (isToday(expDate)) {
+        todayTotal += exp.amount;
+      }
+    });
 
-/* Login Components */
-.login-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 2rem;
-  width: 100%;
-}
+    const categoryTotals = {};
+    expenses.forEach(exp => {
+      const expDate = parseISO(exp.date);
+      const isInMonth = startOfMonth(expDate).getTime() === periodStart.getTime();
+      const isInYear = startOfYear(expDate).getTime() === yearStart.getTime();
+      const isInPeriod = viewMode === 'monthly' ? isInMonth : isInYear;
 
-.login-container {
-  width: 100%;
-  max-width: 420px;
-  padding: 3rem;
-  border-radius: 24px;
-  box-shadow: var(--shadow-lg);
-  animation: fadeIn 0.5s ease-out;
-}
+      if (isInPeriod && exp.category !== 'SIP Investment') {
+        categoryTotals[exp.category] = (categoryTotals[exp.category] || 0) + exp.amount;
+      }
+    });
 
-.login-header {
-  text-align: center;
-  margin-bottom: 2.5rem;
-}
+    let highestCategory = 'None';
+    let highestAmount = 0;
+    Object.entries(categoryTotals).forEach(([cat, amt]) => {
+      if (amt > highestAmount) {
+        highestAmount = amt;
+        highestCategory = cat;
+      }
+    });
 
-.logo-icon-wrapper {
-  width: 64px;
-  height: 64px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 1.5rem;
-}
+    // Daily Average
+    let daysPassed = 1;
+    if (viewMode === 'monthly') {
+      daysPassed = isSameMonth(selectedDate, now) ? now.getDate() : getDaysInMonth(selectedDate);
+    } else {
+      daysPassed = isSameYear(selectedDate, now) ? differenceInDays(now, yearStart) + 1 : 365;
+    }
+    const dailyAverage = totalPeriodic / daysPassed;
 
-.login-header h1 {
-  font-size: 2rem;
-  margin-bottom: 0.5rem;
-}
+    // Savings Tracker (SIP as % of Budget)
+    const budgetToUse = viewMode === 'monthly' ? currentBudget : currentBudget * 12;
+    const savingsRate = (sipTotal / budgetToUse) * 100;
 
-.login-form .form-group {
-  margin-bottom: 1.5rem;
-}
+    // Comparison with last period
+    const diff = totalPeriodic - lastPeriodTotal;
+    const percentChange = lastPeriodTotal === 0 ? (totalPeriodic > 0 ? 100 : 0) : (diff / lastPeriodTotal) * 100;
 
-.login-form label {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--primary);
-  margin-bottom: 0.5rem;
-}
+    return { 
+      totalPeriodic, 
+      todayTotal, 
+      sipTotal, 
+      remaining: budgetToUse - totalPeriodic,
+      highestCategory,
+      highestAmount,
+      dailyAverage,
+      savingsRate,
+      percentChange,
+      lastPeriodTotal,
+      budget: budgetToUse
+    };
+  }, [expenses, currentBudget, viewMode, selectedDate]);
 
-.login-error {
-  background: #fef2f2;
-  color: var(--danger);
-  padding: 1rem;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  margin-bottom: 2rem;
-  border: 1px solid rgba(239, 68, 68, 0.1);
-}
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(exp => {
+      const expDate = parseISO(exp.date);
+      const periodStart = startOfMonth(selectedDate);
+      const yearStart = startOfYear(selectedDate);
+      
+      const isInMonth = startOfMonth(expDate).getTime() === periodStart.getTime();
+      const isInYear = startOfYear(expDate).getTime() === yearStart.getTime();
+      const isInPeriod = viewMode === 'monthly' ? isInMonth : isInYear;
 
-.login-btn {
-  width: 100%;
-  padding: 1rem !important;
-  font-size: 1rem;
-  margin-top: 1rem;
-}
+      const matchesSearch = exp.note.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           exp.category.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = filterCategory === 'All' || exp.category === filterCategory;
+      const matchesDate = !filterDate || exp.date === filterDate;
+      
+      return isInPeriod && matchesSearch && matchesCategory && matchesDate;
+    });
+  }, [expenses, searchTerm, filterCategory, filterDate, selectedDate, viewMode]);
 
-.login-footer {
-  margin-top: 3rem;
-  text-align: center;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
+  const chartData = useMemo(() => {
+    const periodStart = startOfMonth(selectedDate);
+    const yearStart = startOfYear(selectedDate);
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+    // Category Wise
+    const catMap = {};
+    // Pre-populate catch map with all categories to ensure they show in legend
+    CATEGORIES.forEach(cat => catMap[cat] = 0);
 
-/* Sidebar Styles */
-.sidebar {
-  width: var(--sidebar-width);
-  height: 100vh;
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  position: sticky;
-  top: 0;
-  transition: transform 0.3s ease;
-  z-index: 1000;
-}
+    expenses.forEach(e => {
+      const expDate = parseISO(e.date);
+      const isInMonth = startOfMonth(expDate).getTime() === periodStart.getTime();
+      const isInYear = startOfYear(expDate).getTime() === yearStart.getTime();
+      const isInPeriod = viewMode === 'monthly' ? isInMonth : isInYear;
+      if (isInPeriod) {
+        catMap[e.category] = (catMap[e.category] || 0) + e.amount;
+      }
+    });
 
-.sidebar-header { 
-  padding: 2rem; 
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+    // Only include categories that actually exist in the definition or have data
+    const pieData = CATEGORIES.map(cat => ({ 
+      name: cat, 
+      value: catMap[cat] || 0 
+    })).filter(item => item.value > 0 || CATEGORIES.includes(item.name));
 
-.mobile-close-btn {
-  display: none;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-}
+    // Periodic (Last 7 Days)
+    if (viewMode === 'monthly') {
+      const today = startOfDay(new Date());
+      const sevenDaysAgo = subDays(today, 6);
+      
+      const last7Days = eachDayOfInterval({
+        start: sevenDaysAgo,
+        end: today
+      });
 
-@media (max-width: 768px) {
-  .mobile-close-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-}
-.logo-container { display: flex; align-items: center; gap: 0.75rem; }
-.logo-icon { color: var(--accent); width: 32px; height: 32px; }
-.logo-text { font-size: 1.25rem; font-weight: 700; color: var(--primary); }
-.sidebar-nav { padding: 1rem; flex: 1; }
-.nav-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.875rem 1rem;
-  border: none;
-  background: transparent;
-  border-radius: 8px;
-  color: var(--text-muted);
-  font-weight: 500;
-  cursor: pointer;
-  transition: var(--transition);
-  margin-bottom: 0.5rem;
-}
-.nav-item:hover { background: var(--background); color: var(--primary); }
-.nav-item.active { background: var(--accent-soft); color: var(--accent); }
-.sidebar-footer { padding: 1.5rem; border-top: 1px solid var(--border); }
-.add-btn { width: 100%; justify-content: center; background: var(--accent); color: white; }
+      const barData = last7Days.map(day => {
+        const dayTotal = expenses.reduce((sum, exp) => {
+          return isSameDay(parseISO(exp.date), day) ? sum + exp.amount : sum;
+        }, 0);
 
-/* Dashboard & App Layout */
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2.5rem;
-  padding: 1rem 0;
-  width: 100%;
-}
+        return {
+          date: format(day, 'dd MMM'),
+          amount: dayTotal
+        };
+      });
 
-.header-actions { display: flex; align-items: center; gap: 1.25rem; }
+      return { pieData, barData };
+    } else {
+      const periodicMap = {};
+      expenses.forEach(e => {
+        const expDate = parseISO(e.date);
+        if (startOfYear(expDate).getTime() === yearStart.getTime()) {
+          const monthKey = format(expDate, 'MMM');
+          periodicMap[monthKey] = (periodicMap[monthKey] || 0) + e.amount;
+        }
+      });
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const barData = months.map(m => ({
+        date: m,
+        amount: periodicMap[m] || 0
+      }));
+      return { pieData, barData };
+    }
+  }, [expenses, viewMode, selectedDate]);
 
-.selector-group {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  background: var(--glass-bg);
-  padding: 0.5rem;
-  border-radius: 12px;
-  border: 1px solid var(--glass-border);
-}
+  const addExpense = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const amount = Number(formData.get('amount'));
+    const category = formData.get('category');
+    const note = formData.get('note');
+    const date = formData.get('date');
 
-.view-selector, .month-selector {
-  padding: 0.6rem;
-  font-weight: 600;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--primary);
-  cursor: pointer;
-}
+    // Optimistic UI update
+    const tempId = Date.now();
+    const newExp = { id: tempId, date, category, amount, note };
+    setExpenses([newExp, ...expenses]);
+    setActiveTab('dashboard');
 
-.view-selector:hover, .month-selector:hover { background: rgba(255, 255, 255, 0.5); }
+    try {
+      // Send to Google Sheets
+      await fetch(API_URL, {
+        method: 'POST',
+        mode: 'no-cors', 
+        headers: { 'Content-Type': 'text/plain' }, // Using text/plain to avoid preflight issues in simple Apps Script CORS
+        body: JSON.stringify({
+          category,
+          amount,
+          note,
+          Month: `${format(new Date(date), 'dd MMM')} To ${format(new Date(date), 'dd MMM')}` // Correctly formatted date string
+        })
+      });
+      
+      // Refetch to sync with server/sheet
+      setTimeout(fetchExpenses, 2000);
+      
+      if (isQuickMode) {
+        setSaveSuccess(true);
+      } else {
+        setActiveTab('dashboard');
+      }
+    } catch (error) {
+      console.error('Error adding expense:', error);
+      alert('Failed to save to Google Sheets. Please check your connection.');
+    }
+  };
 
-.date-display {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.6rem 1.25rem;
-  font-weight: 600;
-  color: var(--primary);
-  background: var(--glass-bg);
-  border-radius: 12px;
-  border: 1px solid var(--glass-border);
-}
+  const deleteExpense = (id) => {
+    if (window.confirm('Are you sure you want to delete this transaction?')) {
+      setExpenses(expenses.filter(exp => exp.id !== id));
+    }
+  };
 
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
-  width: 100%;
-}
-
-.summary-section {
-  grid-column: span 4;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-}
-
-.analytics-section {
-  grid-column: span 4;
-  display: grid;
-  grid-template-columns: 1fr 1.5fr;
-  gap: 1.5rem;
-}
-
-.span-4 { grid-column: span 4; }
-.span-3 { grid-column: span 3; }
-.span-2 { grid-column: span 2; }
-.mt-6 { margin-top: 1.5rem; }
-.mt-4 { margin-top: 1rem; }
-.text-center { text-align: center; }
-.py-8 { padding-top: 2rem; padding-bottom: 2rem; }
-.text-success { color: var(--success) !important; }
-
-.insight-bubble {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  padding: 1.25rem 1.75rem;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.8) !important;
-  margin-bottom: 0.5rem;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.insight-icon {
-  width: 44px;
-  height: 44px;
-  background: rgba(245, 158, 11, 0.1);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.insight-content { font-size: 0.95rem; color: var(--primary); line-height: 1.5; flex: 1; min-width: 0; }
-
-.chart-layout {
-  display: grid;
-  grid-template-columns: 1fr 180px;
-  gap: 1.5rem;
-  align-items: center;
-  width: 100%;
-}
-
-.chart-main { position: relative; width: 100%; min-width: 0; }
-.chart-container { width: 100%; min-height: 260px; overflow: hidden; }
-
-.donut-center {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  text-align: center;
-  pointer-events: none;
-}
-
-.donut-total { font-size: 1.5rem; font-weight: 800; color: var(--primary); line-height: 1; }
-.donut-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-top: 4px;
-}
-
-.chart-legend { display: flex; flex-direction: column; gap: 0.875rem; }
-.legend-item { display: flex; align-items: center; gap: 0.75rem; }
-.legend-color { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-.legend-info { display: flex; flex-direction: column; min-width: 0; }
-.legend-name { font-size: 0.8125rem; font-weight: 600; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.legend-percent { font-size: 0.75rem; color: var(--text-muted); }
-
-.card-header-flex {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 2rem;
-  width: 100%;
-}
-
-.transaction-table { width: 100%; border-collapse: collapse; }
-.transaction-table th {
-  text-align: left;
-  color: var(--text-muted);
-  font-weight: 500;
-  font-size: 0.875rem;
-  padding: 1rem;
-  border-bottom: 1px solid var(--border);
-}
-.transaction-table td { padding: 1rem; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
-.amount-cell { font-weight: 600; color: var(--primary); }
-.note-cell { color: var(--text-muted); }
-
-.badge {
-  background: var(--background);
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--accent);
-}
-
-.budget-progress { margin: 1.5rem 0; width: 100%; }
-.progress-bar { height: 10px; background: var(--background); border-radius: 5px; overflow: hidden; margin: 0.5rem 0; }
-.progress-fill { height: 100%; background: var(--accent); transition: width 0.3s ease; }
-.budget-info { display: flex; justify-content: space-between; font-size: 0.875rem; color: var(--text-muted); }
-
-.insights-footer { margin-top: 2rem; display: grid; grid-template-columns: 1fr; gap: 1rem; width: 100%; }
-.insight-item { padding: 1rem; background: var(--background); border-radius: 8px; width: 100%; box-sizing: border-box; }
-
-.investment-header-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; width: 100%; }
-
-/* AGGRESSIVE MOBILE FIXES */
-@media (max-width: 1024px) {
-  .dashboard-grid { grid-template-columns: 1fr; }
-  .span-4, .span-3, .span-2 { grid-column: span 1 !important; }
-  .analytics-section { grid-template-columns: 1fr; }
-  .chart-layout { grid-template-columns: 1fr; justify-items: center; }
-  .chart-legend { flex-direction: row; flex-wrap: wrap; justify-content: center; width: 100%; }
-}
-
-@media (max-width: 768px) {
-  * { box-sizing: border-box; }
-  
-  html, body { 
-    width: 100% !important; 
-    max-width: 100vw !important; 
-    overflow-x: auto !important; /* Allow scroll if anything breaks */
-    position: relative;
-    margin: 0;
-    padding: 0;
-  }
-  
-  #root { 
-    display: block !important; /* Remove flex to avoid side-by-side ghost space */
-    width: 100% !important;
-    max-width: 100vw !important;
-    overflow-x: hidden;
-  }
-  
-  .app-container {
-    display: block !important;
-    width: 100% !important;
-  }
-  
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    width: 280px;
-    transform: translateX(-100%);
-    z-index: 2000;
-    transition: transform 0.3s ease-in-out;
-    box-shadow: var(--shadow-xl);
-    pointer-events: none; /* Only active when open */
-  }
-  
-  .sidebar.open { 
-    transform: translateX(0); 
-    pointer-events: auto;
-  }
-  
-  .mobile-toggle {
-    display: flex !important;
-    position: fixed;
-    top: 1rem;
-    left: 1rem;
-    z-index: 2100;
-    background: white;
-    padding: 0.6rem;
-    border-radius: 10px;
-    box-shadow: var(--shadow-lg);
-    border: 1px solid var(--border);
-  }
-  
-  .mobile-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(15, 23, 42, 0.4);
-    backdrop-filter: blur(4px);
-    z-index: 1999;
+  if (!isLoggedIn && !isQuickMode) {
+    return <Login onLoginSuccess={handleLogin} />;
   }
 
-  .main-content {
-    margin: 0 !important; /* STRICT RESET */
-    padding: 1rem !important;
-    padding-top: 5rem !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0;
-    display: block !important;
-    overflow-x: hidden;
-  }
+  return (
+    <div className="app-container mesh-gradient" id="app-root-container">
+      {/* Mobile Toggle & Overlay */}
+      {!isQuickMode && (
+        <>
+          <button className="mobile-toggle" onClick={() => setSidebarOpen(true)}>
+            <Filter size={20} />
+          </button>
 
-  .page-header { 
-    flex-direction: column !important; 
-    align-items: stretch !important; 
-    gap: 1.25rem; 
-    margin-bottom: 2rem;
-    width: 100% !important;
-  }
-  
-  .header-actions { 
-    width: 100% !important; 
-    flex-direction: column !important; 
-    align-items: stretch !important; 
-    gap: 1rem; 
-  }
-  
-  .selector-group { 
-    flex-direction: column !important; 
-    width: 100% !important; 
-    padding: 0.5rem; 
-    background: var(--glass-bg);
-  }
-  
-  .view-selector, .month-selector { 
-    width: 100% !important; 
-    text-align: center; 
-    border: 1px solid var(--border) !important; 
-    margin: 4px 0 !important; 
-    padding: 0.875rem !important;
-    border-radius: 8px !important;
-  }
-  
-  .date-display { 
-    width: 100% !important; 
-    justify-content: center !important; 
-    padding: 0.875rem !important; 
-  }
+          {sidebarOpen && (
+            <div className="mobile-overlay" onClick={() => setSidebarOpen(false)}></div>
+          )}
+        </>
+      )}
 
-  /* Force 1-column layout for all grids */
-  .dashboard-grid, .summary-section, .analytics-section, .investment-header-grid {
-    display: flex !important;
-    flex-direction: column !important;
-    grid-template-columns: 1fr !important;
-    gap: 1.5rem !important;
-    width: 100% !important;
-  }
+      {!isQuickMode && (
+        <Sidebar 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+          onAddClick={() => setActiveTab('add')}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+          onLogout={handleLogout}
+        />
+      )}
 
-  .span-4, .span-3, .span-2 {
-    width: 100% !important;
-    grid-column: auto !important;
-  }
+      <main className="main-content">
+        {!isQuickMode && (
+          <header className="page-header">
+            <div>
+              <h1>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h1>
+              <p className="text-muted">Welcome back, track your spending seamlessly.</p>
+            </div>
+            <div className="header-actions">
+              {activeTab === 'dashboard' && (
+                <div className="selector-group">
+                  <select 
+                    className="input view-selector" 
+                    value={viewMode}
+                    onChange={(e) => setViewMode(e.target.value)}
+                  >
+                    <option value="monthly">Monthly View</option>
+                    <option value="yearly">Yearly View</option>
+                  </select>
 
-  .card { 
-    padding: 1.25rem !important; 
-    width: 100% !important;
-  }
-  
-  .insight-bubble { 
-    flex-direction: column !important; 
-    text-align: center !important; 
-    padding: 1.5rem !important; 
-    gap: 1rem !important; 
-    width: 100% !important;
-  }
+                  {viewMode === 'monthly' && (
+                    <select 
+                      className="input month-selector" 
+                      value={selectedDate.toISOString()}
+                      onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                    >
+                      {monthOptions.map((date) => (
+                        <option key={date.toISOString()} value={date.toISOString()}>
+                          {format(date, 'MMMM yyyy')}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+              <div className="date-display card">
+                <Calendar size={18} />
+                <span>{format(new Date(), 'EEEE, dd MMMM')}</span>
+              </div>
+            </div>
+          </header>
+        )}
 
-  .chart-layout { 
-    display: flex !important;
-    flex-direction: column !important; 
-    gap: 2rem !important; 
-    width: 100% !important;
-    align-items: center !important;
-  }
-  
-  .chart-main { width: 100% !important; }
-  .chart-container { 
-    height: 280px !important; 
-    width: 100% !important; 
-    min-width: 0;
-  }
-  
-  .chart-legend { 
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 1.25rem !important; 
-    width: 100% !important; 
-    justify-items: start !important;
-    padding: 0 1rem;
-  }
-  
-  .legend-item { 
-    width: 100% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 0.75rem !important;
-  }
+        {activeTab === 'dashboard' && (
+          <div className="dashboard-grid">
+            <div className="insight-bubble glass span-4">
+              <div className="insight-icon">
+                <Lightbulb size={20} color="var(--warning)" />
+              </div>
+              <div className="insight-content">
+                <strong>Insight:</strong> {stats.highestAmount > stats.budget * 0.2 ? 
+                  `You've spent a significant portion on ${stats.highestCategory} this period. Consider reviewing it!` : 
+                  `Your SIP savings rate of ${stats.savingsRate.toFixed(1)}% is looking healthy! Keep it up.`}
+              </div>
+            </div>
 
-  .table-responsive {
-    width: 100% !important;
-    overflow-x: auto !important;
-    display: block !important;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    margin: 1.5rem 0;
-  }
-  
-  .transaction-table { min-width: 600px !important; }
+            {/* Summary Cards */}
+            <div className="summary-section">
+              <SummaryCard title="Today's Total" amount={stats.todayTotal} icon={CreditCard} color="#10b981" />
+              <SummaryCard title={viewMode === 'monthly' ? `${format(selectedDate, 'MMMM')} Expense` : "Yearly Expense"} amount={stats.totalPeriodic} icon={PieIcon} color="#0ea5e9" />
+              <SummaryCard title="Remaining Budget" amount={stats.remaining} icon={Home} color="#ef4444" subtitle={`Budget: ₹${stats.budget.toLocaleString('en-IN')}`} />
+              <SummaryCard title="Daily Average" amount={stats.dailyAverage} icon={DollarSign} color="#8b5cf6" subtitle="Spending Speed" />
+              <SummaryCard title="Highest Category" amount={stats.highestAmount} icon={AlertCircle} color="#f59e0b" subtitle={stats.highestCategory} />
+              <SummaryCard title="SIP Investment" amount={stats.sipTotal} icon={PieIcon} color="#ec4899" subtitle={viewMode === 'monthly' ? format(selectedDate, 'MMMM') : format(selectedDate, 'yyyy')} />
+            </div>
 
-  .insights-footer {
-    grid-template-columns: 1fr !important;
-    width: 100% !important;
-  }
+            {/* Analytics */}
+            <div className="analytics-section">
+              <div className="card chart-card glass">
+                <h3>Category Distribution</h3>
+                <div className="chart-layout">
+                  <div className="chart-main">
+                    <div className="donut-center">
+                      <div className="donut-total">₹{stats.totalPeriodic.toLocaleString('en-IN')}</div>
+                      <div className="donut-label">{viewMode === 'monthly' ? format(selectedDate, 'MMM') : format(selectedDate, 'yyyy')}</div>
+                    </div>
+                    <div className="chart-container">
+                      <ResponsiveContainer width="100%" height={260}>
+                        <PieChart>
+                          <Pie 
+                            data={chartData.pieData} 
+                            innerRadius={55} 
+                            outerRadius={75} 
+                            paddingAngle={5} 
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {chartData.pieData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                  <div className="chart-legend">
+                    {chartData.pieData.map((entry, index) => (
+                      <div key={entry.name} className="legend-item">
+                        <div className="legend-color" style={{ background: COLORS[index % COLORS.length] }}></div>
+                        <div className="legend-info">
+                          <span className="legend-name">{entry.name}</span>
+                          <span className="legend-percent">{((entry.value / stats.totalPeriodic) * 100).toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="card chart-card glass">
+                <h3>Recent Activity</h3>
+                <div className="chart-container">
+                  <ResponsiveContainer width="100%" height={260}>
+                    <BarChart data={chartData.barData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} />
+                      <Tooltip 
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow)' }}
+                        cursor={{ fill: 'rgba(0,0,0,0.02)' }} 
+                      />
+                      <Bar dataKey="amount" fill="var(--accent)" radius={[6, 6, 0, 0]} barSize={24} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </div>
+
+            {/* Recent Expenses Table */}
+            <div className="recent-section">
+              <div className="card table-card glass">
+                <div className="card-header-flex">
+                  <h3>Recent Transactions</h3>
+                  <button className="btn btn-accent" onClick={() => setActiveTab('expenses')}>View All</button>
+                </div>
+                <div className="table-responsive">
+                  <table className="transaction-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Amount</th>
+                        <th>Note</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredExpenses.slice(0, 5).map(exp => (
+                        <tr key={exp.id}>
+                          <td>{format(parseISO(exp.date), 'dd MMM')}</td>
+                          <td><span className="badge">{exp.category}</span></td>
+                          <td className="amount-cell">₹{exp.amount}</td>
+                          <td className="note-cell">{exp.note}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Budget Tracker */}
+            <div className="budget-section">
+              <div className="card insight-card glass">
+                <div className="card-header-flex">
+                  <h3>{viewMode === 'monthly' ? "Monthly" : "Yearly"} Budget Progress</h3>
+                  <span className="badge badge-accent">Current Status</span>
+                </div>
+                <div className="budget-progress">
+                  <div className="progress-bar">
+                    <div className="progress-fill" style={{ width: `${Math.min((stats.totalPeriodic / stats.budget) * 100, 100)}%` }}></div>
+                  </div>
+                  <div className="budget-info">
+                    <span>Spent: ₹{stats.totalPeriodic.toLocaleString('en-IN')}</span>
+                    <span>Remaining: ₹{stats.remaining.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+                <div className="insights-footer">
+                  <div className="insight-item">
+                    <p className="text-muted">Avg. {viewMode === 'monthly' ? "Daily" : "Monthly"}</p>
+                    <strong>₹{(stats.totalPeriodic / (viewMode === 'monthly' ? new Date().getDate() : new Date().getMonth() + 1)).toFixed(0)}</strong>
+                  </div>
+                  <div className="insight-item">
+                    <p className="text-muted">Estimated {viewMode === 'monthly' ? "Monthly" : "Yearly"}</p>
+                    <strong>₹{((stats.totalPeriodic / (viewMode === 'monthly' ? new Date().getDate() : new Date().getMonth() + 1)) * (viewMode === 'monthly' ? 30 : 12)).toFixed(0)}</strong>
+                  </div>
+                  <div className="insight-item" style={{ borderLeft: '4px solid var(--danger)' }}>
+                    <p className="text-muted">Highest Spending</p>
+                    <strong>{stats.highestCategory}</strong>
+                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>₹{stats.highestAmount.toLocaleString('en-IN')}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'expenses' && (
+          <div className="expenses-view">
+            <div className="card filters-card">
+              <div className="search-bar">
+                <input 
+                  type="text" 
+                  placeholder="Search transactions..." 
+                  className="input"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <div className="date-filter">
+                <input 
+                  type="date" 
+                  className="input" 
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                />
+              </div>
+              <div className="category-filter">
+                <select 
+                  className="input" 
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                >
+                  <option value="All">All Categories</option>
+                  {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="card table-card mt-6">
+              <div className="table-responsive">
+                <table className="transaction-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Category</th>
+                      <th>Amount</th>
+                      <th>Note</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredExpenses.map(exp => (
+                      <tr key={exp.id}>
+                        <td>{format(parseISO(exp.date), 'dd MMM yyyy')}</td>
+                        <td><span className="badge">{exp.category}</span></td>
+                        <td className="amount-cell">₹{exp.amount.toLocaleString('en-IN')}</td>
+                        <td className="note-cell">{exp.note}</td>
+                        <td>
+                          <button 
+                            className="btn-text-danger" 
+                            onClick={() => deleteExpense(exp.id)}
+                            title="Delete"
+                          >
+                            <AlertCircle size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredExpenses.length === 0 && (
+                      <tr>
+                        <td colSpan="5" className="text-center py-8 text-muted">No transactions found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'analytics' && (
+          <div className="analytics-view dashboard-grid">
+            <div className="card chart-card span-4">
+              <h3>Monthly Spending Trend</h3>
+              <div className="chart-container" style={{ height: '350px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData.barData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} />
+                    <YAxis axisLine={false} tickLine={false} />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="amount" stroke="#0ea5e9" strokeWidth={3} dot={{ r: 4, fill: '#0ea5e9' }} activeDot={{ r: 6 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="card chart-card span-2">
+              <h3>Category Breakdown</h3>
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie 
+                      data={chartData.pieData} 
+                      innerRadius={60} 
+                      outerRadius={100} 
+                      paddingAngle={5} 
+                      dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {chartData.pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="card chart-card span-2">
+              <h3>Spend Analysis</h3>
+              <div className="chart-container">
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={chartData.pieData} layout="vertical" margin={{ left: 20, right: 30, top: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e2e8f0" />
+                    <XAxis type="number" hide />
+                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={150} tick={{ fill: 'var(--text-muted)', fontSize: 13 }} />
+                    <Tooltip cursor={{ fill: '#f1f5f9' }} />
+                    <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={20} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'investments' && (
+          <div className="investments-view">
+            <div className="investment-header-grid">
+              <SummaryCard title="Total SIP Invested" amount={stats.sipTotal} icon={TrendingUp} color="#ec4899" />
+              <div className="card insight-card">
+                <h3>Investment Strategy</h3>
+                <p className="text-muted">You are consistently investing in your future. Keep it up!</p>
+                <div className="mt-4">
+                  <span className="badge badge-success">On Track</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="card table-card mt-6">
+              <h3>SIP Contribution History</h3>
+              <div className="table-responsive mt-4">
+                <table className="transaction-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Amount</th>
+                      <th>Note</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expenses.filter(e => e.category === 'SIP Investment').map(exp => (
+                      <tr key={exp.id}>
+                        <td>{format(parseISO(exp.date), 'dd MMM yyyy')}</td>
+                        <td className="amount-cell text-success">₹{exp.amount.toLocaleString('en-IN')}</td>
+                        <td>{exp.note}</td>
+                      </tr>
+                    ))}
+                    {expenses.filter(e => e.category === 'SIP Investment').length === 0 && (
+                      <tr>
+                        <td colSpan="3" className="text-center py-8 text-muted">No investments recorded yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="settings-view">
+            <div className="card settings-card glass">
+              <div className="settings-header mb-8">
+                <Settings className="text-primary mb-2" size={32} />
+                <h2>Financial Settings</h2>
+                <p className="text-muted">Manage your monthly budgets and preferences.</p>
+              </div>
+
+              <div className="settings-group mb-8">
+                <h3 className="mb-4">Selected Month Budget</h3>
+                <p className="text-muted mb-4">Set budget for <strong>{format(selectedDate, 'MMMM yyyy')}</strong></p>
+                <div className="flex gap-4">
+                  <input 
+                    type="number" 
+                    className="input" 
+                    style={{ flex: 1 }}
+                    value={monthlyBudgets[currentMonthKey] || ''} 
+                    placeholder={monthlyBudgets.default || 50000}
+                    onChange={(e) => updateBudget(currentMonthKey, e.target.value)}
+                  />
+                  <div className="card px-4 flex-center">₹</div>
+                </div>
+              </div>
+
+              <div className="settings-group">
+                <h3 className="mb-4">Default Monthly Budget</h3>
+                <p className="text-muted mb-4">Used for months where no specific budget is set.</p>
+                <div className="flex gap-4">
+                  <input 
+                    type="number" 
+                    className="input"
+                    style={{ flex: 1 }}
+                    value={monthlyBudgets.default || 50000} 
+                    onChange={(e) => updateDefaultBudget(e.target.value)}
+                  />
+                  <div className="card px-4 flex-center">₹</div>
+                </div>
+              </div>
+
+              <div className="mt-12 p-6 glass rounded-xl border border-primary/20 bg-primary/5">
+                <p className="text-sm">
+                  <strong>Pro Tip:</strong> Dashboard automatically switches budgets based on the month you select in the header!
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'add' && (
+          <div className="form-container card">
+            {saveSuccess ? (
+              <div className="success-view text-center py-12">
+                <div className="success-icon-wrapper mb-6">
+                  <Plus size={48} className="text-success" />
+                </div>
+                <h2 className="mb-4">Expense Recorded! ✅</h2>
+                <p className="text-muted mb-8">Aapka kharcha safely Google Sheet mein save ho gaya hai.</p>
+                <div className="flex-center gap-4">
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => {
+                      setSaveSuccess(false);
+                      document.querySelector('.expense-form')?.reset();
+                    }}
+                  >
+                    Add Another Entry
+                  </button>
+                  {!isQuickMode && (
+                    <button className="btn" onClick={() => setActiveTab('dashboard')}>
+                      Go to Dashboard
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="form-header">
+                  <h2>Add New Transaction</h2>
+                  {!isQuickMode && (
+                    <button className="btn" onClick={() => setActiveTab('dashboard')}>
+                      <AlertCircle size={20} /> Cancel
+                    </button>
+                  )}
+                </div>
+                <form onSubmit={addExpense} className="expense-form">
+              <div className="form-group">
+                <label>Date</label>
+                <input type="date" name="date" required className="input" defaultValue={format(new Date(), 'yyyy-MM-dd')} />
+              </div>
+              <div className="form-group">
+                <label>Category</label>
+                <select name="category" className="input" required>
+                  {CATEGORIES.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Amount (₹)</label>
+                <input type="number" name="amount" required className="input" placeholder="0" />
+              </div>
+              <div className="form-group">
+                <label>Note</label>
+                <input type="text" name="note" className="input" placeholder="What's this for?" />
+              </div>
+              <button type="submit" className="btn btn-primary submit-btn">Save Expense</button>
+              </form>
+            </>
+          )}
+        </div>
+      )}
+      </main>
+    </div>
+  );
 }
 
-@media (max-width: 480px) {
-  .legend-item { width: 100% !important; justify-content: center; }
-  .card-header-flex { flex-direction: column !important; align-items: flex-start !important; gap: 1rem; }
-}
+export default App;
