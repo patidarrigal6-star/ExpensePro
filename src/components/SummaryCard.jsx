@@ -13,7 +13,7 @@ export function SummaryCard({ title, amount, icon: Icon, color, subtitle }) {
                 <div className="icon-wrapper" style={{ backgroundColor: `${color}15`, color: color }}>
                     <Icon size={24} />
                 </div>
-                <div className="header-info">
+                <div className="header-info"> <p className="card-subtitle">{title}</p>p> <h2 className="card-title">{formattedAmount}</h2>h2> </div>div> </div>div> {subtitle && <p className="card-footer-text">{subtitle}</p>p>} </div>div> ); } export default SummaryCard</p>
                     <p className="card-subtitle">{title}</p>
                     <h2 className="card-title">{formattedAmount}</h2>
                 </div>
