@@ -22,3 +22,4 @@ export function SummaryCard({ title, amount, icon: Icon, color, subtitle }) {
         </div>
     );
 }
+export default SummaryCard;
