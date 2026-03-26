@@ -76,3 +76,75 @@ body { font-family: 'Inter', sans-serif; background-color: var(--background); co
   .main-content { padding: 1rem; }
   .page-header { flex-direction: column; align-items: stretch; gap: 1rem; }
 }
+
+/* --- FINAL UI FIXES --- */
+
+/* Sidebar Layout Correction */
+.sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.sidebar-nav {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+  padding: 1rem !important;
+  flex: 1 !important;
+}
+
+.nav-item {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  padding: 0.875rem 1rem !important;
+  justify-content: flex-start !important;
+  white-space: nowrap !important;
+}
+
+/* App Container Desktop Fix */
+@media (min-width: 769px) {
+  .app-container {
+    display: flex !important;
+    flex-direction: row !important;
+  }
+  
+  .sidebar {
+    position: sticky !important;
+    transform: none !important;
+    width: 280px !important;
+    min-width: 280px !important;
+    flex-shrink: 0 !important;
+  }
+  
+  .main-content {
+    flex: 1 !important;
+    width: calc(100% - 280px) !important;
+  }
+}
+
+/* Dashboard Grid Fix */
+.dashboard-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 1.5rem !important;
+}
+
+@media (max-width: 1200px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .span-4 { grid-column: span 2 !important; }
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .sidebar {
+    width: 280px !important;
+    z-index: 10000 !important;
+  }
+}
