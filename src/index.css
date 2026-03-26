@@ -294,3 +294,44 @@ body {
   color: white !important;
   border-radius: 12px !important;
 }
+
+/* --- SIDEBAR BUTTONS PREMIUM POLISH --- */
+
+.sidebar-nav .nav-item {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  margin-bottom: 8px !important;
+  box-shadow: none !important;
+}
+
+.sidebar-nav .nav-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  transform: translateX(5px) !important;
+}
+
+.sidebar-nav .nav-item.active {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  color: white !important;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Hide Mobile Elements on Desktop */
+@media (min-width: 769px) {
+  .mobile-toggle, .mobile-close-btn, .mobile-overlay {
+    display: none !important;
+  }
+}
+
+/* Sidebar Footer Adjustments */
+.sidebar-footer {
+  padding: 1.5rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.75rem !important;
+}
+
+.sidebar-footer .nav-item {
+  background: transparent !important;
+  border: none !important;
+}
