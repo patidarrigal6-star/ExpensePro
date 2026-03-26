@@ -79,8 +79,7 @@ function App() {
         .map((item, index) => {
           let dateStr = format(new Date(), 'yyyy-MM-dd');
           let parsedDate = null;
-          const currentYear = new Date().getFullYear();
-          if (item.Month && item.Month.includes('-') && !item.Month.includes('To')) {
+          if (item.Month && item.Month.includes('-')) {
             try {
               parsedDate = parse(item.Month, 'dd-MM-yyyy', new Date());
               if (!parsedDate || isNaN(parsedDate.getTime())) parsedDate = parseISO(item.Month);
@@ -107,7 +106,7 @@ function App() {
     }
   }, []);
 
-  useEffect(() => { if (isLoggedIn || isQuickMode) fetchExpenses(); }, [isLoggedIn, isQuickMode]);
+  useEffect(() => { if (isLoggedIn || isQuickMode) fetchExpenses(); }, [isLoggedIn, isQuickMode, fetchExpenses]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -126,7 +125,6 @@ function App() {
   const currentMonthKey = format(selectedDate || new Date(), 'yyyy-MM');
   const budgetObj = monthlyBudgets || { default: 50000 };
   const currentBudget = budgetObj[currentMonthKey] || budgetObj.default || 50000;
-
   const currentMonthName = format(selectedDate || new Date(), 'MMMM');
 
   const monthOptions = useMemo(() => {
@@ -275,7 +273,12 @@ function App() {
     const tempId = Date.now();
     setExpenses(prev => [{ id: tempId, date, category, amount, note }, ...prev]);
     try {
-      await fetch(API_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ category, amount, note, Discerption: note, Month: format(parseISO(date), 'dd-MM-yyyy'), timestamp: new Date().toISOString() }) });
+      await fetch(API_URL, { 
+        method: 'POST', 
+        mode: 'no-cors', 
+        headers: { 'Content-Type': 'text/plain' }, 
+        body: JSON.stringify({ category, amount, note, Discerption: note, Month: format(parseISO(date), 'dd-MM-yyyy'), timestamp: new Date().toISOString() }) 
+      });
       setTimeout(fetchExpenses, 2000);
       if (isQuickMode) setSaveSuccess(true); else setActiveTab('dashboard');
     } catch (error) { console.error('Error adding expense:', error); }
@@ -322,7 +325,13 @@ function App() {
       </div>
       <div class="report-footer"><p>© ${new Date().getFullYear()} ExpensePro Dashboard • Secure Financial Tracking</p><p style="margin-top: 4px;">This is a computer generated statement and does not require a physical signature.</p></div>
     `;
-    const opt = { margin: 0.5, filename: `expense-report-${reportDate.toLowerCase().replace(' ', '-')}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true, logging: false }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
+    const opt = { 
+      margin: 0.5, 
+      filename: `expense-report-${reportDate.toLowerCase().replace(' ', '-')}.pdf`, 
+      image: { type: 'jpeg', quality: 0.98 }, 
+      html2canvas: { scale: 2, useCORS: true, logging: false }, 
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } 
+    };
     const script = document.createElement('script');
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
     script.onload = () => { window.html2pdf().set(opt).from(element).save().then(() => { document.head.removeChild(script); }); };
@@ -336,7 +345,7 @@ function App() {
       {!isQuickMode && <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} onAddClick={() => setActiveTab('add')} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} onLogout={handleLogout} />}
       <main className="main-content">
         <header className="page-header">
-          <div><h1>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h1><p className="text-muted">Welcome back, track your spending seamlessly.</p></div>
+          <div><h1>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h1><p className="text-muted">Welcome back, track your spending.</p></div>
           <div className="header-actions">
             {activeTab === 'dashboard' && (
               <div className="selector-group glass">
@@ -364,11 +373,10 @@ function App() {
               return (
                 <div className="span-4 glass insight-banner" style={{ background: 'linear-gradient(90deg, rgba(16, 185, 129, 0.15), rgba(99, 102, 241, 0.08))', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '1.25rem 1.75rem', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '1rem' }}>
                   <div style={{ background: 'rgba(16, 185, 129, 0.25)', color: '#10b981', padding: '0.65rem', borderRadius: '12px' }}><Lightbulb size={24} /></div>
-                  <div style={{ fontSize: '0.95rem', color: 'var(--text)', fontWeight: 500 }}><strong style={{ color: '#10b981', marginRight: '6px' }}>Insight:</strong> Your SIP savings rate of <span style={{ color: '#10b981', fontWeight: 700 }}>{savingsRate.toFixed(1)}%</span> is looking healthy! Keep it up.</div>
+                  <div style={{ fontSize: '0.95rem', color: 'var(--text)', fontWeight: 500 }}><strong style={{ color: '#10b981', marginRight: '6px' }}>Insight:</strong> Your SIP savings rate of <span style={{ color: '#10b981', fontWeight: 700 }}>{savingsRate.toFixed(1)}%</span> is looking healthy!</div>
                 </div>
               );
             })()}
-
             <SummaryCardsSection stats={stats} onBudgetClick={() => setShowBudgetModal(true)} currentMonthName={currentMonthName} />
             <Suspense fallback={<div className="card glass flex-center py-20 text-muted">Loading Analytics...</div>}><ChartsSection chartData={chartData} stats={stats} viewMode={viewMode} selectedDate={selectedDate || new Date()} /></Suspense>
             <RecentTransactionsTable filteredExpenses={filteredExpenses} setActiveTab={setActiveTab} />
@@ -403,15 +411,10 @@ function App() {
         {activeTab === 'investments' && (
           <div className="expenses-view">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', gap: '1rem', flexWrap: 'wrap' }}>
-              <div><h2 style={{ fontSize: '1.875rem', fontWeight: 700, background: 'linear-gradient(to right, #34d399, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Portfolio Analysis</h2><p className="text-muted">Track your SIPs and investment performance.</p></div>
+              <div><h2 style={{ fontSize: '1.875rem', fontWeight: 700, background: 'linear-gradient(to right, #34d399, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Portfolio Analysis</h2><p className="text-muted">Track your SIPs and investments.</p></div>
               <div className="card glass" style={{ padding: '0.75rem 1.25rem', background: 'rgba(52, 211, 153, 0.05)', border: '1px solid rgba(52, 211, 153, 0.2)', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{ background: 'rgba(52, 211, 153, 0.2)', color: '#34d399', padding: '0.5rem', borderRadius: '10px' }}><TrendingUp size={20} /></div>
                 <div><p style={{ margin: 0, fontSize: '0.65rem', color: 'rgba(255,255,255,0.6)' }}>Total Portfolio Value</p><h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 800 }}>₹{investmentData.reduce((sum, exp) => sum + exp.amount, 0).toLocaleString('en-IN')}</h3></div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                {['all', 'thisMonth', 'custom'].map(type => (
-                  <button key={type} onClick={() => setInvViewType(type)} style={{ padding: '8px 16px', borderRadius: '10px', fontSize: '0.875rem', fontWeight: 600, border: 'none', cursor: 'pointer', background: invViewType === type ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : 'transparent', color: invViewType === type ? '#fff' : 'rgba(255,255,255,0.5)' }}>{type === 'all' ? 'All Time' : type === 'thisMonth' ? 'This Month' : 'Custom'}</button>
-                ))}
               </div>
             </div>
             <div className="card table-card"><div className="table-responsive"><table className="transaction-table"><thead><tr><th>Date</th><th>Investment</th><th>Amount</th><th>Note</th></tr></thead><tbody>
@@ -421,7 +424,6 @@ function App() {
         )}
 
         {activeTab === 'analytics' && <Suspense fallback={<div className="card glass flex-center py-20 text-muted">Loading...</div>}><AnalyticsSection chartData={chartData} /></Suspense>}
-        {activeTab === 'settings' && <div className="card glass" style={{ maxWidth: '600px', padding: '2rem' }}><h2>Settings</h2><p className="text-muted mb-8">Set budget for {format(selectedDate, 'MMMM yyyy')}</p><input type="number" className="input" value={monthlyBudgets[currentMonthKey] || ''} onChange={(e) => setMonthlyBudgets(p => ({...p, [currentMonthKey]: Number(e.target.value)}))} style={{ fontSize: '1.5rem', padding: '1rem' }} /></div>}
         {activeTab === 'add' && <AddExpenseForm saveSuccess={saveSuccess} setSaveSuccess={setSaveSuccess} setActiveTab={setActiveTab} isQuickMode={isQuickMode} addExpense={addExpense} addFormDate={addFormDate} setAddFormDate={setAddFormDate} />}
       </main>
     </div>
