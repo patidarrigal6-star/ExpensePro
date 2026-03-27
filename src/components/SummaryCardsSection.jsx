@@ -1,19 +1,23 @@
 import React from 'react';
-import { CreditCard, PieChart as PieIcon, DollarSign } from 'lucide-react';
+import { CreditCard, PieChart as PieIcon, Home, DollarSign, AlertCircle } from 'lucide-react';
 import { SummaryCard } from './SummaryCard';
 
 const SummaryCardsSection = React.memo(({ stats, currentMonthName }) => (
-    <>
-        <SummaryCard title="Today's Total" amount={stats.todayTotal} icon={CreditCard} />
-        <SummaryCard title={`${currentMonthName} Total`} amount={stats.totalPeriodic} icon={PieIcon} />
-        <SummaryCard 
-            title="Remaining" 
-            amount={stats.remaining} 
-            icon={CreditCard}
-            subtitle={`Monthly Budget: ₹${stats.budget.toLocaleString('en-IN')}`}
-        />
-        <SummaryCard title="Daily Avg" amount={stats.dailyAverage} icon={DollarSign} subtitle="Average Spends" />
-    </>
-));
+        <div className="summary-section">
+                <SummaryCard title="TODAY'S TOTAL" amount={stats.todayTotal} icon={CreditCard} color="#3b82f6" />
+                <SummaryCard title={`${currentMonthName.toUpperCase()} EXPENSE`} amount={stats.totalPeriodic} icon={PieIcon} color="#10b981" />
+                <SummaryCard
+                                title="REMAINING BUDGET"
+                                amount={stats.remaining}
+                                icon={Home}
+                                color={stats.remaining < 0 ? "#ef4444" : "#6366f1"}
+                                subtitle={`Budget: \u20B9${stats.budget.toLocaleString('en-IN')}`}
+                            />
+                <SummaryCard title="DAILY AVERAGE" amount={stats.dailyAverage} icon={DollarSign} color="#f59e0b" subtitle="Spending Speed" />
+                <SummaryCard title="HIGHEST CATEGORY" amount={stats.highestAmount} icon={AlertCircle} color="#ec4899" subtitle={stats.highestCategory} />
+                <SummaryCard title="SIP INVESTMENT" amount={stats.sipTotal} icon={PieIcon} color="#8b5cf6" subtitle={currentMonthName} />
+        </div>div>
+    ));
 
 export default SummaryCardsSection;
+</div>
