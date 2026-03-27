@@ -17,7 +17,7 @@ const AddExpenseForm = React.memo(({
                 <div className="success-icon-wrapper mb-6">
                     <Plus size={48} className="text-success" />
                 </div>
-                <h2 className="mb-4">Expense Recorded! ✅</h2>
+                <h2 className="mb-4">Expense Recorded! /h2>h2>
                 <p className="text-muted mb-8">Aapka kharcha safely Google Sheet mein save ho gaya hai.</p>
                 <div className="flex-center gap-4">
                     <button
@@ -71,7 +71,7 @@ const AddExpenseForm = React.memo(({
                     </select>
                 </div>
                 <div className="form-group">
-                    <label>Amount (₹)</label>
+                                    <label>Amount (Rs.)</label>label></label><label>Amount (Amount (Rs.)</label>label>
                     <input type="number" name="amount" required className="input" placeholder="0" />
                 </div>
                 <div className="form-group">
