@@ -78,3 +78,4 @@ const AnalyticsSection = React.memo(({ chartData }) => (
 ));
 
 export default AnalyticsSection;
+
