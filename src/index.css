@@ -253,13 +253,14 @@ h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
       background: transparent;
 }
 
+::-
 ::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-      background: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.2);
 }
 
 /* Utilities */
@@ -272,7 +273,207 @@ h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; }
 
 /* Filters Section */
 .filters-card {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+}
+
+.search-bar { flex: 1; }
+
+.btn-text-danger {
+        background: transparent;
+        color: #ef4444;
+        border: none;
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: 8px;
+        transition: var(--transition);
+}
+
+.btn-text-danger:hover {
+        background: rgba(239, 68, 68, 0.1);
+}
+
+/* Charts Tooltip */
+.recharts-default-tooltip {
+        background-color: var(--card-bg) !important;
+        backdrop-filter: blur(10px) !important;
+        border: 1px solid var(--glass-border) !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Add Form Layout */
+.form-container {
+        max-width: 800px;
+        margin: 0 auto;
+}
+
+.form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+}
+
+.form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+        color: var(--text-muted);
+}
+
+/* Category grid in form */
+.category-btn-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+}
+
+.category-select-btn {
+        padding: 1rem 0.5rem;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--glass-border);
+        color: var(--text);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        transition: var(--transition);
+}
+
+.category-select-btn:hover {
+        background: rgba(255, 255, 255, 0.06);
+        transform: translateY(-2px);
+}
+
+.category-select-btn.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        box-shadow: 0 8px 20px -6px rgba(99, 102, 241, 0.6);
+}
+
+.category-select-btn svg {
+        margin-bottom: 2px;
+}
+
+/* Settings Styles */
+.settings-card {
+        max-width: 600px;
+        margin: 0 auto;
+}
+
+.settings-header {
+        border-bottom: 1px solid var(--glass-border);
+        padding-bottom: 1.5rem;
+        margin-bottom: 2rem;
+        text-align: center;
+}
+
+.settings-group {
+        padding: 1.5rem;
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 16px;
+}
+
+/* Login Page Styles */
+.login-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+}
+
+.login-card {
+        width: 100%;
+        max-width: 450px;
+        padding: 3rem;
+        text-align: center;
+}
+
+.login-branding {
+        margin-bottom: 2.5rem;
+}
+
+.login-branding .logo-icon {
+        width: 64px;
+        height: 64px;
+        background: linear-gradient(135deg, var(--primary), var(--accent));
+        border-radius: 18px;
+        margin: 0 auto 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
+}
+
+/* Success Animation */
+.success-checkmark {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 1.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+        .dashboard-grid {
+                  grid-template-columns: repeat(2, 1fr);
+        }
+        .span-3, .span-4 { grid-column: span 2; }
+}
+
+@media (max-width: 768px) {
+        .sidebar { width: 80px; }
+        .sidebar-text { display: none; }
+        .main-content { padding: 1.5rem; }
+        .dashboard-grid { grid-template-columns: 1fr; }
+        .span-2, .span-3, .span-4 { grid-column: span 1; }
+        .page-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+}
+
+/* Charts Section Specifics */
+.chart-container {
+        min-height: 350px;
+}
+
+.insight-banner {
+        animation: slideInRight 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@keyframes slideInRight {
+        from { opacity: 0; transform: translateX(30px); }
+        to { opacity: 1; transform: translateX(0); }
+}
+
+/* --- Added for 3x2 Grid and 6 Cards --- */
+.summary-cards-section {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(2, auto);
+        gap: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+        .summary-cards-section {
+                  grid-template-columns: repeat(2, 1fr);
+        }
+}
+
+@media (max-width: 640px) {
+        .summary-cards-section {
+                  grid-template-columns: 1fr;
+        }
+}
+
+/* Animation for budget bar */
+.progress-bar {
+        height: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 0.5rem;
 }
